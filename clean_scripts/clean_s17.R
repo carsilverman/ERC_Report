@@ -54,7 +54,7 @@ clean_s17 <- function(lab_data) {
   lab_data$major1[lab_data$major1==""] <- NA
   lab_data$major2[lab_data$major2==""] <- NA
   
-  majors <- as.matrix(read.csv("Majors.csv", header = FALSE))
+  majors <- as.matrix(read.csv("majors/Majors.csv", header = FALSE))
   lab_data$major1 <- factor(lab_data$major1, levels=majors)
   lab_data$major2 <- factor(lab_data$major2, levels=majors)
   # summary(lab_data$major1)
@@ -107,9 +107,9 @@ clean_s17 <- function(lab_data) {
   #Group majors into categories: Soical Sciences, STEM, Humanities, Other, Undeclared
   #---------------------------------------------------------------------------------------------
   
-  majors_SS <- as.matrix(read.csv("Majors_SS.csv", header = FALSE))
-  majors_STEM <- as.matrix(read.csv("Majors_STEM.csv", header = FALSE))
-  majors_Hum <- as.matrix(read.csv("Majors_Humanities.csv", header = FALSE))
+  majors_SS <- as.matrix(read.csv("majors/Majors_SS.csv", header = FALSE))
+  majors_STEM <- as.matrix(read.csv("majors/Majors_STEM.csv", header = FALSE))
+  majors_Hum <- as.matrix(read.csv("majors/Majors_Humanities.csv", header = FALSE))
   
   lab_data$majorCat <- NULL
   lab_data$majorCat2 <- NULL

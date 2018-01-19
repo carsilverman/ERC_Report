@@ -16,12 +16,8 @@ tables: true
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo =FALSE, message = FALSE, warning = FALSE, comment="")
 
-rm(list=ls(all=TRUE))
-# #Set working directory to where files are located
-# setwd('/Users/carsilverman/Desktop/ERC/ERC Attendance 2')
-
+# Required Packages
 # Uncomment to install packages (ctrl/command + shift + c)
-
   # install.packages("ggplot2")
   # install.packages("tidyverse")
   # install.packages("lubridate")
@@ -42,13 +38,14 @@ library(pander)
 
 #specify number of data sets and read in the files
 n <- 2
-files <- lapply(c('F16data.csv','S17data.csv'), read.csv)
+files <- lapply(c('walkin_data/F16data.csv','walkin_data/S17data.csv'), read.csv)
 semesters <- c('Fall 2016', 'Spring 2017')
 
 #specify cleaning functions
-clean <- c('clean_f16.R','clean_s17.R')
+clean <- c('clean_scripts/clean_f16.R','clean_scripts/clean_s17.R')
 lapply(clean, source)
 clean_fun <- gsub('.R', "", clean)
+clean_fun <- gsub('clean_scripts/', "", clean_fun)
 
 #Read and clean data
 data <- list()
