@@ -1,0 +1,1517 @@
+---
+title: "ERC Walk-In Lab Report"
+author: "Carolyn Silverman"
+output:
+  pdf_document:
+    highlight: pygments
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  html_document:
+    toc: yes
+    toc_depth: '3'
+tables: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo =FALSE, message = FALSE, warning = FALSE, comment="")
+
+# Required Packages
+# Uncomment to install packages (ctrl/command + shift + c)
+  # install.packages("ggplot2")
+  # install.packages("tidyverse")
+  # install.packages("lubridate")
+  # install.packages("dplyr")
+  # install.packages("tidyr")
+  # install.packages("stringr")
+  # install.packages("stringi")
+  # install.packages("colorspace")
+  # install.packages("stargazer")
+  # install.packages('xtable')
+  # install.packages('pander')
+  # install.packages('descr')
+
+library(stargazer)
+library(xtable)
+library(knitr)
+library(pander)
+
+#REQUIRED USER INPUT
+
+#specify datasets to analyze
+datasets <- c('walkin_data/F16data.csv', 'walkin_data/S17data.csv')
+
+#specify semester names
+semesters <- c('Fall 2016', 'Spring 2017')
+
+#specify cleaning functions; for future semesters, replicate clean_s17.R and make any necessary changes
+clean <- c('clean_scripts/clean_f16.R','clean_scripts/clean_s17.R')
+
+#specify graduate and undergraduate fellow names (as they appear in the qualtrics survey)
+grad <- c("Trish K.", "Anna S.", "Rachael D.")
+undergrad <- c("Anna C.", "Carolyn S.", "Fatima K.", "Mariam R.", "Natalie K.", "Shannon G.")
+
+## END USER INPUT
+
+n <- length(datasets)
+
+#read in the files
+files <- lapply(datasets, read.csv)
+
+#prep cleaning functions
+lapply(clean, source)
+clean_fun <- gsub('.R', "", clean)
+clean_fun <- gsub('clean_scripts/', "", clean_fun)
+
+#Read and clean data
+data <- list()
+for (i in 1:n){
+  data[[i]] <- do.call(clean_fun[i], list(files[[i]]))
+}
+lab_data <- do.call(rbind, data) #combine the data sets
+
+#load the color palettes for plots (created using choose_palette())
+load("pal.RData")
+```
+
+\newpage
+# Introduction
+The following report is based on Empirical Reasoning Center walk-in data from `r semesters`.  
+  
+## Background
+
+**What is Empirical Reasoning?**
+
+Empirical reasoning is the process of thinking critically about organizing, analyzing, and visualizing qualitative, quantitative, and/or geospatial data.
+
+**What is the Empirical Reasoning Center?**
+
+The ERC, located in Barnard College's library, provides assistance to students, teachers, staff, and alumni of Barnard College and the larger Columbia University community in three main areas:
+
+1. **Training and Technical Assistance**: The ERC offers training for statistical analysis, textual analysis, and geographical information systems software. We support both Macs and PCs. 
+
+2. **Individual Guidance**: The ERC can help individuals through each step of the research process from basic research design and formulating a hypothesis to data analysis and visualization to interpreting and presenting results. 
+
+3. **Classroom Support**: The ERC supports courses with supplementary training sessions focusing on using analysis softwares, finding appropriate datasets, and interpreting and understanding the narrative of quantative and qualitative data. 
+
+The ERC walk-in center is staffed by undergraduate fellows and graduate assistants who work one-on-one with students to help them with coursework and research projects grounded in empirical reaosning. All visitors to the ERC are required to fill out a paper sign-in sheet if they receive help from a fellow or use our resources. A copy of the sign-in sheet can be found **[here](https://drive.google.com/open?id=0B13J3XughLsLUEhJdnEyRk9xS2M)**. ERC fellows later copy the information from the sign-in sheets verbatim into a Qualtrics survey. At any point, we can obtain a CSV that contains the results of the Qualtrics survey to date. 
+
+## Summary of Methods
+This report analyzes the data produced by the Qualtrics survey. The long-term goal of the project is described below:
+
+With only a small amount of additional data cleaning, the CSV for a new semester of ERC walk-in data can be read into R and a comprehensive report will automatically be produced via code written in R markdown. The report begins with simple descriptive statistics about single variables of interest. 
+
+>Who are the students visiting the ERC: class year? major category? school? 
+
+>Who are they coming to see: undergraduate fellows? graduate students? 
+
+>In which software packages and programming languages are they seeking support: R? GIS? Excel? MATLAB? Stata? 
+
+>What types of problems are they facing: data analysis? visualization? finding data? 
+
+>Which courses are they taking: intro level? project-based? 
+
+>When are they most likely to visit the ERC: week? day? time?
+
+This information is helpful for training new fellows, providing workshops for students, improving outreach methods, and scheduling fellows during peak hours. It will also help track our progress over time and provide insight into how we can accommodate the changing needs and interests of our students.
+
+We further break down some of the summary statistics by school, namely Barnard College versus the other Columbia University undergraduate schools (CC/SEAS/GS). We are particulary interested in the courses that our Columbia visitors take and the programs they use. 
+
+The report also provides information about the length of each visit and determines the categorical variables that have a statistically significant relationship with length of stay. Finally, we assign a student ID (sid) to each unique visitor in order to track repeat visitors over time. We determine the variables associated with the students who visit the ERC multiple times via chi-squared tests. Detailed methods are outlined at the beginning of each relevant section.
+
+The code currently runs on 1 or more semesters of data.
+
+**Cleaning Scripts**
+
+Each CSV is first pre-processed and cleaned via a script unique to the relevant semester of data. Unique cleaning scripts are used because the fellows, courses we support, and sign-in sheet questions and answers change from year to year.
+ 
+For data sets from semesters after Spring 2017, the clean_s17.R script can be used as a template. The user will have to adjust the sections that clean the open-ended questions of the Qualtrics survey (hear about and course), as well as program (if the ERC begins to support new programs), semester, and fellow. And of course, if changes are made to the Qualtrics survey, these changes must be reflected in the cleaning scripts. 
+
+\newpage
+
+# Descriptive Statistics For Single Variables
+We start by providing descriptive statistics and plots for single variables. We find the number of visitors that fall into each level of a given categorical variable, as well as the proportion of all visitors that this number represents. Each plot is broken down by semester, while each table contains information for the aggregate data set. Tables with counts and proportions for individual semesters can be easily produced from the R code. NA's have been omitted in the analysis of all single variables. 
+
+## Class Year
+Class year generally applies to students enrolled in one of the undergraduate colleges of Columbia University (BC, CC, SEAS, GS). If the visitor is a graduate student, professor, alumnus, etc, she will fall into the "Other" category.
+
+```{r, results='asis'}
+# -------------------------------------------------------------------------
+# Class Year
+# -------------------------------------------------------------------------
+
+#Plot Number of Visitors by Class Year
+
+analyze_cyear <- function(lab_data){
+  
+  lab_data$year <- factor(lab_data$year, levels = c("First Year", "Second Year", "Third Year", "Fourth Year", "Other")  ,ordered = T)
+  table <- summary(lab_data$year)
+  
+  schoolYear <- ggplot(lab_data, aes(year)) + 
+    geom_bar(fill = pal(1)) + xlab("Class Year") + 
+    ylab("Number of Visitors") +
+    ggtitle("Visits by Class Year") + 
+    theme(plot.title = element_text(hjust = 0.5))
+  return(list(table, schoolYear))
+}
+
+cyear_all <- analyze_cyear(lab_data) #aggregate
+cyear_sem <- lapply(data, analyze_cyear) #by semester
+names(cyear_sem) <- semesters
+
+
+#Plot for aggregate dataset filled by semester
+lab_data$year <- factor(lab_data$year, 
+                        levels = c("First Year", "Second Year", "Third Year", "Fourth Year", "Other"),
+                        ordered = T)
+cyear_plot <- ggplot(lab_data[!is.na(lab_data$year),], aes(year, fill = semester)) + 
+  geom_bar() + 
+  labs(title = "Visits by Class Year", 
+       x = "Class Year", 
+       y = "Number of Students") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester")
+cyear_plot
+
+# #Plots for individual semesters
+# for(i in 1:n){
+#   print(cyear_sem[[i]][[2]] +
+#           ggtitle(paste0("Visits by Class Year (", semesters[i], ")")))
+# }
+
+
+#View tabulation of class year
+options(xtable.comment = FALSE)
+tab <- table(lab_data$year)
+p <- prop.table(tab)
+tab2 <- cbind(tab,p)
+t <- xtable(data.frame(levels(lab_data$year),tab2), digits = c(0,0,0,3), 
+            caption = 'Visits by Class Year (Aggregate)')
+names(t) <- c('Class Year','Visitors','Proportion')
+large <- function(x){
+  paste0('{\\Large{\\bfseries ', x, '}}')
+}
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+#(255+269)/(94+161)
+#About twice as many 3rd and 4th years as 1st and 2nd years
+```
+
+
+## Major Category
+
+Rather than obtaining counts for specific majors, it is more useful to group our visitors into three categories based on major: Social Sciences, STEM, and Humanities. Visitors who are double majors or who specify a minor in the survey are counted twice in the analysis.
+
+```{r, results = 'asis'}
+# -------------------------------------------------------------------------
+# MajorCat Analysis 
+# -------------------------------------------------------------------------
+
+analyze_major <- function(lab_data){
+  #Aggregate by major category and get counts
+  #First get counts for major 1, then major 2
+  #Left join major1 and major2 to merge the tables
+  #Obtain total counts and percentages for each major category
+  #Store the major category as a factor
+  major1df <- lab_data %>% 
+    group_by(majorCat) %>%
+    summarise(n_major1 = n())
+  
+  major2df <- lab_data %>% 
+    group_by(majorCat2) %>%
+    summarise(n_major2 = n())%>%
+    rename(majorCat = majorCat2)
+  
+  majorCat_DF <- left_join(major1df, major2df)
+  majorCat_DF$n_major2[is.na(majorCat_DF$n_major2)] <- 0
+  majorCat_DF$total <- with(majorCat_DF, n_major1 + n_major2)
+  majorCat_DF <- majorCat_DF[-which(is.na(majorCat_DF$majorCat)),]
+  majorCat_DF$totalPercent <- with(majorCat_DF, total/sum(total))
+  majorCat_DF$majorCat <- factor(majorCat_DF$majorCat, 
+              levels = c("Social Sciences", "STEM", "Humanities", "Other"))
+  
+  #Bar plot of major categories
+  majorType <- ggplot(na.omit(majorCat_DF), aes(x = majorCat, y = total)) +
+              geom_bar(stat = "identity", fill = pal(1)) + 
+              xlab("Major") + ylab("Number of Students") + 
+              ggtitle("Visits by Major Category")
+  majorType <- majorType + theme(plot.title = element_text(hjust = 0.5))
+  
+  return(list(majorCat_DF, majorType))
+}
+
+#Total
+major_all <- analyze_major(lab_data)
+
+#Breakdown by Semester
+major_sem <- lapply(data, analyze_major)
+names(major_sem) <- semesters
+
+#Plot
+for(i in 1:n) {major_sem[[i]][[1]]$semester <- semesters[i]}
+major_DF_2 <- do.call(rbind, lapply(major_sem, function(l) l[[1]]))
+
+major_DF_2$majorCat <- factor(major_DF_2$majorCat, 
+              levels = levels(major_DF_2$majorCat)[order(with(major_DF_2, 
+              tapply(total, majorCat, FUN = sum)), decreasing = T)])
+
+m_plot <- ggplot(major_DF_2, 
+                 aes(x = majorCat, y = total, fill = semester)) +
+          geom_bar(stat = "identity") + 
+          xlab("Major") + 
+          ylab("Number of Students") + 
+          ggtitle("Visits by Major Category") +
+          theme(plot.title = element_text(hjust = 0.5)) +
+          scale_fill_manual(values=pal(n), name = "Semester")
+m_plot 
+
+# Plots for individual semesters
+# for(i in 1:n){
+#   print(major_sem[[i]][[2]] + 
+#           ggtitle(paste0("Visits by Major Category (", semesters[i], ")")))
+# }
+
+#View Table
+t <- xtable(major_all[[1]][,c(1,4,5)], digits = c(0,0,0,3), caption = 'Visits by Major Category (Aggregate)')
+names(t) <- c('Major','Visitors','Proportion')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+#lapply(major_sem, function(l) l[[1]])
+```
+
+\newpage
+## Program
+
+Since one of the main purposes of the Empirical Reasoning Center is to provide support for statistical software programs, Program is a main variable of interest. Students seeking help with multiple programs are counted multiple times. The GIS category consists of all GIS-related softwares including arcGIS and QGIS.
+
+```{r, results='asis'}
+# -------------------------------------------------------------------------
+# Program Analysis 
+# -------------------------------------------------------------------------
+
+analyze_program <- function(lab_data){
+  #Aggregate by program and get counts
+  #First get counts for program 1, then program 2, then program 3
+  #Merge tables using left join
+  #Obtain total counts and percentages for each program
+  program1df <- lab_data[,-c(5,6)] %>% 
+    group_by(program1) %>%
+    summarise(n_program1 = n())%>%
+    rename(program = program1)
+  
+  program2df <- lab_data[,-c(5,6)] %>% 
+    group_by(program2) %>%
+    summarise(n_program2 = n())%>%
+    rename(program = program2)
+  
+  program3df <- lab_data[,-c(5,6)] %>% 
+    group_by(program3) %>%
+    summarise(n_program3 = n())%>%
+    rename(program = program3)
+  
+  program_DF <- full_join(program1df, program2df)
+  program_DF <- full_join(program_DF, program3df)
+  program_DF[, 2:4][is.na(program_DF[, 2:4])] <- 0
+  
+  program_DF$total <- with(program_DF, n_program1 + n_program2 + n_program3)
+  program_DF <- program_DF[-which(is.na(program_DF$program)),]
+  program_DF$totalPercent <- with(program_DF, total/sum(total))
+  
+  #Remove intermediary data frames
+  rm(program1df, program2df, program3df)
+  
+  #Order Program
+  program_DF <- program_DF[order(program_DF$total, decreasing = T),-c(2:4)]
+  
+  #Bar plot of Percent of Total Visitors by Program
+  program_DF$program <- factor(program_DF$program, 
+                levels = program_DF$program[order(program_DF$total, decreasing = T)])
+  program_plot <- ggplot(na.omit(program_DF), aes(x = program, y = total)) +
+                geom_bar(stat = "identity", fill = pal(1)) + 
+                xlab("Program") + ylab("Number of Visitors") + 
+                ggtitle("Visitors by Program") +
+                theme(plot.title = element_text(hjust = 0.5))
+  
+  return(list(program_DF, program_plot))
+}
+
+#Total
+program_all <- analyze_program(lab_data)
+
+#Breakdown by Semester
+program_sem <- lapply(data, analyze_program)
+names(program_sem) <- semesters
+
+#Plot
+for(i in 1:n) {program_sem[[i]][[1]]$semester <- semesters[i]}
+program_DF_2 <- do.call(rbind, lapply(program_sem, function(l) l[[1]]))
+
+program_DF_2$program <- factor(program_DF_2$program, 
+                              levels = levels(program_DF_2$program)[order(with(program_DF_2, 
+                                tapply(total, program, FUN = sum)), decreasing = T)])
+
+p_plot <- ggplot(program_DF_2, 
+                 aes(x = program, y = total, fill = semester)) +
+        geom_bar(stat = "identity") + 
+        xlab("Program") + 
+        ylab("Number of Students") + 
+        ggtitle("Visits by Program") +
+        theme(plot.title = element_text(hjust = 0.5)) +
+        scale_fill_manual(values=pal(n), name = "Semester")
+p_plot 
+
+# Plots for individual semesters
+# for(i in 1:n){
+#   print(program_sem[[i]][[2]] +
+#           ggtitle(paste0("Visits by Major Category (", semesters[i], ")")))
+# }
+
+#View Table
+t <- xtable(program_all[[1]], digits = c(0,0,0,3), caption = 'Visits by Program (Aggregate)')
+names(t) <- c('Program','Visitors','Proportion')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+#lapply(program_sem, function(l) l[[1]])
+```
+
+\newpage
+## Problem
+
+"Nature of the question" is a multiple choice question in our survery (with multiple selections allowed). Fellows, not visitors, fill out this question. Again, a visitor with multiple problems is counted multiple times.
+
+```{r, results = 'asis'}
+# -------------------------------------------------------------------------
+# Problem Analysis 
+# -------------------------------------------------------------------------
+
+analyze_problem <- function(lab_data){
+  prob <- data.frame(table(lab_data$problem))
+  names(prob) <- c("Problem", "Count")
+  problems <- c("Data Analysis", "Data Visualization / charts", "Interpretation", "Method", 
+                "Statistics", "Finding Data", "Research Design", "Qualitative Analysis", "Other")
+  problems_df <- data.frame()
+  for (p in problems) {
+    s <- sum(prob[grep(p, prob$Problem),2])
+    problems_df <- rbind(problems_df, cbind(p,s))
+  }
+  
+  # View Number of Visitors by Problem
+  problems_df$s <- as.numeric(as.character(problems_df$s))
+  problems_df$percent <- problems_df$s/sum(problems_df$s)
+  names(problems_df) <- c('Problem','Count','Percent')
+  problems_df <- problems_df[order(problems_df$Count, decreasing = T),]
+  
+  
+  #Plot
+  problems_df$Problem <- factor(problems_df$Problem, 
+                                 levels = problems_df$Problem[order(problems_df$Count, decreasing = T)])
+  
+  #Bar plot of major categories
+  prob_p <- ggplot(problems_df, aes(x = Problem, y = Count)) +
+          geom_bar(stat = "identity", fill = pal(1)) + 
+          xlab("Problem") + ylab("Number of Students") + 
+          ggtitle("Visits by Problem") +
+          theme(plot.title = element_text(hjust = 0.5),
+                axis.text.x = element_text(angle = 60, hjust = 1))
+  return(list(problems_df, prob_p))
+}
+
+#Total
+problem_all <- analyze_problem(lab_data)
+
+#Breakdown by Semester
+problem_sem <- lapply(data, analyze_problem)
+names(problem_sem) <- semesters
+
+#Plot
+for(i in 1:n) {problem_sem[[i]][[1]]$semester <- semesters[i]}
+problem_DF_2 <- do.call(rbind, lapply(problem_sem, function(l) l[[1]]))
+
+problem_DF_2$Problem <- factor(problem_DF_2$Problem, 
+                               levels = levels(problem_DF_2$Problem)[order(with(problem_DF_2, 
+                               tapply(Count, Problem, FUN = sum)), decreasing = T)])
+
+#source('new_lines_adder.R')
+p_plot <- ggplot(problem_DF_2, 
+                 aes(x = Problem, y = Count, fill = semester)) +
+  geom_bar(stat = "identity") + 
+  xlab("Problem") + 
+  ylab("Number of Students") + 
+  ggtitle("Visits by Problem") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values=pal(n), name = "Semester") + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+p_plot 
+
+# Plots for individual semesters
+# for(i in 1:n){
+#   print(problem_sem[[i]][[2]] +
+#           ggtitle(paste0("Visits by Problem (", semesters[i], ")")))
+# }
+
+
+#View Table
+t <- xtable(problem_all[[1]], digits = c(0,0,0,3), caption = 'Visits by Problem (Aggregate)')
+names(t) <- c('Problem','Visitors','Proportion')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+#lapply(problem_sem, function(l) l[[1]])
+```
+
+\newpage
+## How did you Hear About the ERC?
+
+This is currently a free response question on our survey, so the responses had to be heavily cleaned in order to categorize them. 
+
+```{r hear About, results='asis'}
+
+analyze_hearAbout <- function(lab_data){
+  hearAbout_df <- lab_data %>%
+    group_by(hearAbout) %>%
+    summarise(count = n(), percent = n()/nrow(lab_data))
+  
+  
+  hearAbout_df <- hearAbout_df[order(hearAbout_df$percent, decreasing = T),]
+  
+  #Plot (use to obtain plots for individual semesters)
+  hearAbout_DF_2 <- hearAbout_df
+  hearAbout_DF_2$hearAbout <- factor(hearAbout_DF_2$hearAbout, 
+              levels = hearAbout_DF_2$hearAbout[order(hearAbout_DF_2$count, decreasing = T)])
+  
+  other <- hearAbout_DF_2$hearAbout[which(hearAbout_DF_2$percent < .02)]
+  hearAbout_DF_2[hearAbout_DF_2$hearAbout %in% other,"hearAbout"] <- "OTHER"
+  hearAbout_DF_2 <- hearAbout_DF_2[!is.na(hearAbout_DF_2$hearAbout),]#remove NA row for plot
+  
+  h_plot <- ggplot(hearAbout_DF_2, aes(x = hearAbout, y = count)) +
+              geom_bar(stat = "identity", fill = pal(1)) + 
+              xlab("") + 
+              ylab("Number of Students") + 
+              ggtitle("How Did You Hear About the ERC?") +
+              theme(plot.title = element_text(hjust = 0.5)) +
+              scale_fill_manual(values=pal(n), name = "Semester")
+  
+  return(list(hearAbout_df, h_plot))
+}
+
+#Analyze hear about for aggregate data set and for each semester
+hearAbout_df <- analyze_hearAbout(lab_data)
+hearAbout_sem <- lapply(data, analyze_hearAbout)
+names(hearAbout_sem) <- semesters
+
+
+# t2 <- lapply(hearAbout_sem, function(l) l[[1]])
+# for (i in 1:n){
+#   t <- xtable(t2[[i]], digits = c(0,0,0,3), caption = paste0('How did you hear about the ERC? (', semesters[i], ')'))
+#   names(t) <- c('How?','Number of Students','Proportion')
+# print(t, include.rownames=FALSE, NA.string = '<NA>')
+# }
+
+
+#Plot
+for(i in 1:n) {hearAbout_sem[[i]][[1]]$semester <- semesters[i]}
+hearAbout_DF_2 <- do.call(rbind, lapply(hearAbout_sem, function(l) l[[1]]))
+
+hearAbout_DF_2$hearAbout <- factor(hearAbout_DF_2$hearAbout, 
+                                 levels = levels(hearAbout_DF_2$hearAbout)[order(with(hearAbout_DF_2, 
+                                          tapply(count, hearAbout, FUN = sum)), decreasing = T)])
+
+#Rename cateories with less than 2% in the aggregate data set to "OTHER"
+#other <- hearAbout_df[[1]]$hearAbout[which(hearAbout_df[[1]]$percent < .02)]
+#hearAbout_DF_2[hearAbout_DF_2$hearAbout %in% other,"hearAbout"] <- "OTHER"
+hearAbout_DF_2 <- hearAbout_DF_2[!is.na(hearAbout_DF_2$hearAbout),]#remove NA row for plot
+
+h_plot <- ggplot(hearAbout_DF_2, 
+                             aes(x = hearAbout, y = count, fill = semester)) +
+          geom_bar(stat = "identity") + 
+          xlab("") + 
+          ylab("Number of Students") + 
+          ggtitle("How Did You Hear About the ERC?") +
+          theme(plot.title = element_text(hjust = 0.5)) +
+          scale_fill_manual(values=pal(n), name = "Semester") +
+          theme(axis.text.x = element_text(angle = 60, hjust = 1))
+h_plot 
+
+# Plots for individual semesters
+# for(i in 1:n){
+#   hearAbout_sem[[i]][[2]] + 
+#     ggtitle(paste0("How Did You Hear About the ERC? (", semesters[i], ")"))
+# }
+
+
+#Format Tables
+t <- xtable(hearAbout_df[[1]][!is.na(hearAbout_df[[1]]$hearAbout),], 
+            digits = c(0,0,0,3), caption = 'How did you hear about the ERC? (Aggregate)')
+names(t) <- c('Source','Number of Students','Proportion')
+#print(t, include.rownames=FALSE, NA.string = '<NA>')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+```
+
+\newpage
+## Fellow
+
+We display tables and plots for both individual fellows and fellow "type", that is undergraduate or graduate student.
+
+```{r fellow, results = 'asis'}
+#Aggregate by fellow and get counts
+#First get counts for fellow 1, then fellow 2, then fellow 3
+#Merge tables using full join
+#Obtain total counts and percentages for each fellow
+#Function returns 2 data frames and 2 plots
+
+analyze_fellow <- function(lab_data){
+
+  fellow1df <- lab_data %>% 
+    group_by(fellow1) %>%
+    summarise(n_fellow1 = n()) %>%
+    rename(fellow = fellow1)
+  
+  fellow2df <- lab_data %>% 
+    group_by(fellow2) %>%
+    summarise(n_fellow2 = n()) %>%
+    rename(fellow = fellow2)
+  
+  fellow3df <- lab_data %>% 
+    group_by(fellow3) %>%
+    summarise(n_fellow3 = n()) %>%
+    rename(fellow = fellow3)
+  
+  fellow_DF <- NULL
+  fellow_DF$fellow <- NA
+  fellow_DF <- full_join(fellow1df, fellow2df)
+  fellow_DF <- full_join(fellow_DF, fellow3df)
+  fellow_DF[, 2:4][is.na(fellow_DF[, 2:4])] <- 0
+  
+  fellow_DF$total <- with(fellow_DF, n_fellow1 + n_fellow2 + n_fellow3)
+  fellow_DF <- fellow_DF[-which(is.na(fellow_DF$fellow)),]
+  fellow_DF$totalPercent <- with(fellow_DF, total/sum(total))
+  fellow_DF <- fellow_DF[order(fellow_DF$total, decreasing = T),]
+
+  #Check breakdown of grad students vs undergrads
+  #grad assistants and undergrad fellows are specified at the top of the script
+  fellow_breakdown <- fellow_DF 
+  fellow_breakdown$fellow[fellow_breakdown$fellow %in% grad] <- "grad"
+  fellow_breakdown$fellow[fellow_breakdown$fellow %in% undergrad] <- "undergrad" 
+  
+  fellow_breakdown <- fellow_breakdown %>%
+    group_by(fellow) %>%
+    summarise(count = sum(total), percent = sum(totalPercent)) %>%
+    rename(fellowType = fellow)
+  
+  #Visualize Results
+  #Get rid of last initial
+  fellow_DF$fellow <- as.character(fellow_DF$fellow)
+  first <- gsub(" .*", "", fellow_DF$fellow)
+  fellow_DF$fellow[gsub(" .*", "", fellow_DF$fellow) != 'Anna'] <- first[first != 'Anna']
+  
+  fellow_DF$fellow <- factor(fellow_DF$fellow, levels = fellow_DF$fellow[order(fellow_DF$total, decreasing = T)])
+  fellow_p <- ggplot(fellow_DF, aes(x = fellow, y = total)) +
+          geom_bar(stat = "identity", fill = pal(1)) + 
+          xlab("Fellow") + ylab("Number of Students Helped") + 
+          ggtitle("Breakdown of Visits by Fellow") +
+          theme(plot.title = element_text(hjust = 0.5)) 
+
+  fellow_breakdown_p <- ggplot(fellow_breakdown[-which(fellow_breakdown$fellowType == "Alisa R."),], 
+          aes(x = fellowType, y = count)) +
+          geom_bar(stat = "identity", fill = pal(1)) + 
+          xlab("Fellow Type") + 
+          ylab("Number of Students Helped") + 
+          ggtitle("Breakdown of Visits by Fellow Type") +
+          theme(plot.title = element_text(hjust = 0.5))
+  
+  return(list(fellow_DF,fellow_breakdown,fellow_p,fellow_breakdown_p))
+}
+
+fellow_all <- analyze_fellow(lab_data) #Total
+fellow_sem <- lapply(data, analyze_fellow) #Breakdown by Semester
+names(fellow_sem) <- semesters
+
+
+
+
+# t2 <- lapply(fellow_sem, function(l) l[[1]][,-c(2:4)])
+# for (i in 1:n){
+#   t <- xtable(t2[[i]], digits = c(0,0,0,3), caption = paste('Visits by Fellow', semesters[i]))
+#   names(t) <- c('Fellow','Visitors','Proportion')
+# print(t, include.rownames=FALSE)
+# }
+
+# print(kable(lapply(fellow_sem, function(l) l[[1]][,-c(2:4)]), format = 'latex', booktabs = T,
+#       caption = paste('Visits by Fellow', paste(semesters, collapse = ', ')),
+#       col.names = c('Fellow','Visitors','Proportion')), table.placement="H")
+
+
+
+#Plot All Fellows
+for(i in 1:n) {fellow_sem[[i]][[1]]$semester <- semesters[i]}
+fellow_DF <- do.call(rbind, lapply(fellow_sem, function(l) l[[1]][,c('fellow','total','semester')]))
+
+#Plot in order of most visits to least visits
+fellow_DF$fellow <- factor(fellow_DF$fellow, 
+            levels = fellow_DF$fellow[order(with(fellow_DF, tapply(total, fellow, FUN = sum)), decreasing = T)])
+
+fellow_p <- ggplot(fellow_DF, aes(x = fellow, y = total, fill = semester)) +
+            geom_bar(stat = "identity") + 
+            xlab("Fellow") + 
+            ylab("Number of Students Helped") + 
+            ggtitle("Breakdown of Visits by Fellow") +
+            theme(plot.title = element_text(hjust = 0.5))  +
+            scale_fill_manual(values=pal(n), name = "Semester") +
+            theme(axis.text.x = element_text(angle = 60, hjust = 1))
+fellow_p 
+
+
+#View Tables
+# print(kable(fellow_all[[1]][,-c(2:4)], caption = 'Visits by Fellow (Aggregate)',
+#       col.names = c('Fellow','Visitors','Proportion')), table.placement="H")
+t <- xtable(fellow_all[[1]][,-c(2:4)], digits = c(0,0,0,3),
+            caption = 'Visits by Fellow (Aggregate)')
+names(t) <- c('Fellow','Visitors','Proportion')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+```
+
+```{r fellow type, results = 'asis'}
+#Plot Grad vs. Undergrad
+for(i in 1:n) {fellow_sem[[i]][[2]]$semester <- semesters[i]}
+fellow_DF_2 <- do.call(rbind, lapply(fellow_sem, function(l) l[[2]][,c('fellowType','count','semester')]))
+
+fellow_breakdown_p <- ggplot(fellow_DF_2[-which(fellow_DF_2$fellowType == "Alisa R."),], 
+            aes(x = fellowType, y = count, fill = semester)) +
+            geom_bar(stat = "identity") + 
+            xlab("Fellow Type") + 
+            ylab("Number of Students Helped") + 
+            ggtitle("Breakdown of Visits by Fellow Type") +
+            theme(plot.title = element_text(hjust = 0.5)) +
+            scale_fill_manual(values=pal(n), name = "Semester")
+fellow_breakdown_p 
+
+#View Grad vs. Undergad Tables
+# kable(fellow_all[[2]], caption = 'Visits by Fellow Type (Aggregate)',
+#        col.names = c('Fellow Type','Visitors','Proportion'))
+# # for (i in 1:n){
+# #   print(kable(fellow_sem[[i]][[2]], format = 'latex', booktabs = T,
+# #        caption = paste('Visits by Fellow Type', semesters[i]),
+# #        col.names = c('Fellow Type','Visitors','Proportion')))
+# # }
+# kable(lapply(fellow_sem, function(l) l[[2]]), format = 'latex', booktabs = T,
+#       caption = paste('Visits by Fellow Type', paste(semesters, collapse = ', ')),
+#       col.names = c('Fellow Type','Visitors','Proportion'))
+
+
+t <- xtable(fellow_all[[2]], digits = c(0,0,0,3), caption = 'Visits by Fellow Type (Aggregate)')
+names(t) <- c('Fellow Type','Visitors','Proportion')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+# t2 <- lapply(fellow_sem, function(l) l[[2]])
+# for (i in 1:n){
+#   t <- xtable(t2[[i]], digits = c(0,0,0,3), caption = paste('Visits by Fellow', semesters[i]))
+#   names(t) <- c('Fellow Type','Visitors','Proportion')
+# print(t, include.rownames=FALSE)
+# }
+```
+
+\newpage
+## Course List
+The following tables show the number of visits to the ERC by course for each semester. The tables exclude courses with fewer than five visitors. It should also be noted that this question is listed on the back of our survey, so there is a large number of NA's for this variable. 
+
+```{r, results='asis'}
+#Courses
+get_courses <- function(lab_data){
+  course_sum <- summary(na.omit(factor(lab_data$course)))
+  course_sum <- course_sum[order(course_sum, decreasing = T)]
+  return(course_sum[course_sum >= 5])
+}
+d <- lapply(data, get_courses)
+# lapply(d, function(x) xtable(data.frame(x)))
+for (i in 1:n){
+  t <- xtable(data.frame(d[[i]]), 
+              caption = paste('Number of Visitors by Course,',semesters[i]))
+  names(t) <- ''
+  print(t,sanitize.colnames.function = large, booktabs = T)
+}
+
+```
+
+\newpage 
+
+## Time of Day
+
+The following plots break down the number of visits to the ERC by time of day based on the time that the student entered. If the student stayed for multiple hours, it is not reflected in the histogram. The first set of histograms aggregates across all days of the week, while the second set has a unique plot for each day. For a current calendar of our hours, **[click here](https://erc.barnard.edu/visit)**.
+
+```{r}
+# -------------------------------------------------------------------------
+# Time of Day
+# -------------------------------------------------------------------------
+lab_data$timeIn <- strptime(lab_data$timeIn, format = '%Y-%m-%d %H:%M:%S')
+lab_data$timeOut <- strptime(lab_data$timeOut, format = '%Y-%m-%d %H:%M:%S')
+
+#create time of day variable (every observation will have the same date)
+lab_data$timeOfDay <- format(lab_data$timeIn, "%H:%M")
+lab_data$timeOfDay <- strptime(lab_data$timeOfDay, format='%H:%M')
+
+time_df <- na.omit(lab_data[, c('timeOfDay','semester','dow')])
+
+#Plot
+time_plot <- ggplot(time_df, aes(x = timeOfDay)) + 
+  geom_histogram(fill = pal(1), binwidth = 60*60) +
+  scale_x_datetime(date_breaks = "2 hour", date_labels = "%H:%M") +
+  ylab("Frequency") + xlab("Time") + 
+  ggtitle("Number of Visits to the ERC by Time of Day") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90))
+time_plot + facet_wrap(~semester)
+```
+
+
+```{r, fig.width=12,fig.height=15}
+#View plot by dow and semester excluding Saturdays
+time_plot2 <- ggplot(time_df[!time_df$dow == 'Saturday',], aes(x = timeOfDay)) + 
+  geom_histogram(fill = pal(1), binwidth = 60*60) +
+  scale_x_datetime(date_breaks = "2 hour", date_labels = "%H:%M") +
+  ylab("Frequency") + xlab("Time") + 
+  ggtitle("Number of Visits to the ERC by Time of Day") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90))
+time_plot2 + theme(axis.text=element_text(size=18),
+          axis.title.x = element_text(size=20, margin = margin(t = 15)),
+          axis.title.y = element_text(size=20, margin = margin(r = 15)),
+          strip.text.x = element_text(size = 16),
+          strip.text.y = element_text(size = 16),
+          plot.title = element_text(size=22, margin = margin(b = 20))) +
+        facet_grid(dow~semester)
+
+```
+
+\newpage
+## Day of Week
+
+The Day of Week plot displays the number of visitors to the ERC on each day for the semesters provided.
+
+```{r}
+# -------------------------------------------------------------------------
+# Day of Week
+# -------------------------------------------------------------------------
+analyze_day <- function(lab_data){
+  table <- summary(lab_data$dow)
+  
+  #Bar graph of number of visits by day of week
+  dayWeek <- ggplot(lab_data, aes(dow)) + 
+    geom_bar(fill = pal(1)) + 
+    labs(title = "Visits by Day of Week", 
+         x = "Day of Week", 
+         y = "Number of Students") +
+    theme(plot.title = element_text(hjust = 0.5))
+    
+  return(list(table, dayWeek))
+}
+
+day_all <- analyze_day(lab_data) #aggregate
+day_sem <- lapply(data, analyze_day) #each semester
+
+#Plot for aggregate dataset filled by semester
+dayWeek <- ggplot(lab_data[!is.na(lab_data$dow),], aes(dow, fill = semester)) + 
+  geom_bar() + 
+  labs(title = "Visits by Day of Week", 
+       x = "Day of Week", 
+       y = "Number of Students") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+dayWeek
+
+# #Plots for individual semesters
+# for(i in 1:n){
+#   print(cyear_sem[[i]][[2]] +
+#           ggtitle(paste0("Visits by Day of Week (", semesters[i], ")")))
+# }
+```
+
+
+\newpage
+## Week of Year
+
+The final set of histograms displays the number of visitors to the ERC on a macro level for each semester. 
+
+```{r}
+# -------------------------------------------------------------------------
+# Number of Visits over time
+# -------------------------------------------------------------------------
+
+#omit summer visits
+lab_data$betterDates <- as.Date(lab_data$betterDates)
+date_df <- na.omit(lab_data[!lab_data$betterDates < as.Date('2016-09-01'), c('betterDates','semester')])
+
+#Plot
+date_plot <- ggplot(date_df, aes(x = betterDates)) + 
+  geom_histogram(fill = pal(1), binwidth=7) +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b-%d") +
+  ylab("Number of Students") + xlab("Date") + 
+  ggtitle("Number of Visits to the ERC by Week") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90))
+
+date_plot + facet_wrap(~semester, scales = "free_x")
+```
+
+\newpage
+# Length of Visit
+
+In this section, we analyze the length of each visit to the ERC in minutes and present graphs, tables, ANOVA, and paired $t$-test results for length of stay broken down by select variables (Major Category, Program, School, and Class Year). 
+
+## Summary Statistics and Distribution
+```{r}
+#---------------------------------------------------------------------------------------------
+#Length of Stay Analysis
+#---------------------------------------------------------------------------------------------
+
+analyze_lenStay <- function(lab_data){
+  #Mean of length of stay
+  mean <- mean(lab_data$length_Stay, na.rm = TRUE)
+
+  #glance at distribution
+  dist <- summary(as.numeric(lab_data$length_Stay))
+  
+  #plot distribution
+  plot <- ggplot(lab_data, aes(as.numeric(length_Stay))) +
+    geom_histogram(fill = pal(1), bins = 10) +
+    xlab("Length of Stay (Minutes)") + ylab("Frequency") +
+    ggtitle("Length of Stay per ERC Visit") +
+    theme(plot.title = element_text(hjust = 0.5)) 
+  return(list(mean, dist, plot))
+}
+
+lstay_all <- analyze_lenStay(lab_data) #aggregate
+lstay_sem <- lapply(data, analyze_lenStay) #each semester
+names(lstay_sem) <- semesters
+#lapply(lstay_sem, '[[', 1) #mean length of stay for each semester
+#lapply(lstay_sem, '[[', 2) #distribution for each semester
+#People stayed much longer on average in spring than in fall
+
+# for (i in 1:n){
+#   cat('\nThe average length of stay in', semesters[i], 'was', 
+#       round(as.numeric(lstay_sem[[i]][[1]]),2),'minutes.\n')
+# }
+```
+
+**Plot of Distribution**
+
+```{r, stay plot}
+#plot distribution filled by semester
+stay_plot <- ggplot(lab_data, aes(as.numeric(length_Stay), fill = semester)) +
+  geom_histogram(bins = 10) +
+  xlab("Length of Stay (Minutes)") + ylab("Frequency") +
+  ggtitle("Length of Stay per ERC Visit") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester")
+stay_plot
+
+# #Plots for individual semesters
+# for(i in 1:n){
+#   print(lstay_sem[[i]][[3]] +
+#           ggtitle(paste0("Length of Stay per ERC Visit (", semesters[i], ")")))
+# }
+
+```
+
+**Summary of Distribution by Semester**
+```{r, stay dist, tidy = TRUE}
+for (i in 1:n){
+  cat(semesters[i],':\n')
+  print(lstay_sem[[i]][[2]])
+}
+#lapply(lstay_sem, '[[', 2)
+#xtable(data.frame(lstay_sem[[1]][[2]]))
+```
+
+\newpage
+## Length of Stay by Major Category
+
+We start by plotting the distributions for length of stay by major category, excluding "Other" and NA's. We then display the average length of stay in minutes by major category. Finally, we run an Analysis of Variance (ANOVA) test to determine if there is a statistically significant difference in the mean length of stay for each major category (again excluding "Other" and NA's). If the $p$-value is significant at the $p<.05$ level, we run pairwise t-tests with bonferroni corrections for multiple testing to determine which pairs of group means have a statistically significant difference. The $p$-values are displayed in Table 12.
+
+
+```{r}
+keep <- c('Social Sciences','STEM','Humanities')
+stay_plot <- ggplot(lab_data[lab_data$majorCat %in% keep,], 
+                    aes(as.numeric(length_Stay), fill = semester)) +
+  geom_histogram(bins = 10) +
+  xlab("Length of Stay (Minutes)") + ylab("Frequency") +
+  ggtitle("Length of Stay per ERC Visit") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester")
+
+stay_plot + facet_wrap(~majorCat, ncol = 2, scales = "free_y") + 
+  ggtitle("Length of Stay per ERC Visit by Major Category")
+```
+
+```{r, results='asis'}
+lab_data$length_Stay <- as.numeric(lab_data$length_Stay)
+#look at length of stay by majorCat
+stay_major <- tapply(lab_data$length_Stay, lab_data$majorCat, FUN = mean, na.rm = TRUE)
+t <- xtable(data.frame(stay_major), caption = 'Average Length of Stay by Major')
+names(t) <- ''
+print(t)
+
+major_aov <- aov(length_Stay~majorCat, data=lab_data[lab_data$majorCat %in% keep,])
+#summary(major_aov)
+xtable(major_aov, caption = "ANOVA Results")
+
+#pairwise t-test results
+t <- with(lab_data[lab_data$majorCat %in% keep,], pairwise.t.test(length_Stay, majorCat, p.adjust="bonferroni")) 
+
+xtable(t$p.value, caption = "$p$-values for pairwise t-tests with pooled SD and bonferroni adjustment")
+```
+
+\newpage
+
+## Length of Stay by Program
+
+The same procedure described above for major category is applied to program. For simplicity, we only consider the first program listed by the visitor if he/she listed multiple programs. This simplification will have little effect on the results, since the majority of our visitors come in for assistance with one program at a time. The ANOVA and paired t-tests exclude programs with fewer than ten observations, as well as "Other."
+
+
+```{r}
+stay_plot <- ggplot(lab_data[!is.na(lab_data$program1),], 
+                    aes(as.numeric(length_Stay), fill = semester)) +
+  geom_histogram(bins = 10) +
+  xlab("Length of Stay (Minutes)") + ylab("Frequency") +
+  ggtitle("Length of Stay per ERC Visit") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester")
+
+stay_plot + facet_wrap(~program1, ncol = 3, scales = "free_y") + 
+  ggtitle("Length of Stay per ERC Visit by Program")
+```
+
+```{r, results='asis'}
+#length of stay by program
+program_stay <- tapply(lab_data$length_Stay, lab_data$program1, FUN = mean, na.rm = TRUE)
+t <- xtable(data.frame(program_stay), caption = 'Average Length of Stay by Program')
+names(t) <- ''
+print(t)
+
+#summary(aov(length_Stay~program1, data=lab_data)) #statistically significant
+#xtable(aov(length_Stay~program1, data=lab_data), caption = "ANOVA Results")
+
+keep <- c('EXCEL','STATA','SPSS','R','GIS','MATLAB')
+
+program_aov <- aov(length_Stay~program1, data=lab_data[lab_data$program1 %in% keep,])
+#summary(major_aov)
+xtable(program_aov, caption = "ANOVA Results")
+```
+
+```{r, results = 'asis'}
+#pairwise t-test results
+t <- with(lab_data[lab_data$program1 %in% keep,], pairwise.t.test(length_Stay, program1, p.adjust="bonferroni")) 
+
+xtable(t$p.value, caption = "$p$-values for pairwise t-tests with pooled SD and bonferroni adjustment")
+```
+
+\newpage
+
+## Length of Stay by School
+
+Next we break down length of stay by school. We include "Other" schools in this analysis.
+
+```{r}
+stay_plot + facet_wrap(~school, ncol = 2, scales = "free_y") + 
+  ggtitle("Length of Stay per ERC Visit by School")
+```
+
+```{r, results='asis'}
+#length of stay by school
+school_stay <- tapply(lab_data$length_Stay, lab_data$school, FUN = mean, na.rm = TRUE)
+t <- xtable(data.frame(school_stay), caption = 'Average Length of Stay by School')
+names(t) <- ''
+print(t)
+
+#summary(aov(length_Stay~school, data=lab_data)) #statistically significant
+#xtable(aov(length_Stay~school, data=lab_data), caption = "ANOVA Results")
+
+school_aov <- aov(length_Stay~school, data=lab_data)
+#summary(major_aov)
+xtable(school_aov, caption = "ANOVA Results")
+
+#pairwise t-test results
+t <- with(lab_data, pairwise.t.test(length_Stay, school, p.adjust="bonferroni")) 
+
+xtable(t$p.value, caption = "$p$-values for pairwise t-tests with pooled SD and bonferroni adjustment")
+```
+
+\newpage
+
+## Length of Stay by Class Year
+Finally, the same length  of stay analysis is broken down by class year, with plots, ANOVA, and paired t-tests excluding "Other."
+
+```{r, results='asis'}
+keep <- c('First Year','Second Year','Third Year','Fourth Year')
+stay_plot <- ggplot(lab_data[lab_data$year %in% keep,], 
+                    aes(as.numeric(length_Stay), fill = semester)) +
+  geom_histogram(bins = 10) +
+  xlab("Length of Stay (Minutes)") + ylab("Frequency") +
+  ggtitle("Length of Stay per ERC Visit") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_fill_manual(values=pal(n), name = "Semester")
+
+stay_plot + facet_wrap(~year, ncol = 2, scales = "free_y") + 
+  ggtitle("Length of Stay per ERC Visit by Class Year")
+
+#length of stay by class year
+cyear_stay <- tapply(lab_data$length_Stay, lab_data$year, FUN = mean, na.rm = TRUE)
+t <- xtable(data.frame(cyear_stay), caption = 'Average Length of Stay by Class Year')
+names(t) <- ''
+print(t)
+
+#summary(aov(length_Stay~year, data=lab_data)) #statistically significant
+#xtable(aov(length_Stay~year, data=lab_data), caption = "ANOVA Results")
+
+keep <- c('First Year','Second Year','Third Year','Fourth Year')
+year_aov <- aov(length_Stay~year, data=lab_data[lab_data$year %in% keep,])
+#summary(major_aov)
+xtable(year_aov, caption = "ANOVA Results")
+
+#pairwise t-test results
+t <- with(lab_data[lab_data$year %in% keep,], pairwise.t.test(length_Stay, year, p.adjust="bonferroni")) 
+
+xtable(t$p.value, caption = "$p$-values for pairwise t-tests with pooled SD and bonferroni adjustment")
+```
+
+\newpage
+
+# Summary Statistics by School
+
+In order to gain more insight into the types of students visiting the ERC from the different Columbia University colleges, we present plots for the number of visits from students of each school broken down by major category, software program/programming language, and class year. In section 4, we provide tables of the number of visitors by course. 
+
+```{r}
+#change times back to characters
+lab_data$timeIn <- as.character(lab_data$timeIn)
+lab_data$timeOut <- as.character(lab_data$timeOut)
+lab_data$timeOfDay <- as.character(lab_data$timeOfDay)
+```
+
+## Major Category
+```{r}
+lab_data_c <- lab_data[lab_data$school == "CC/SEAS/GS",]
+lab_data_b <- lab_data[lab_data$school == "BC",]
+data_school <- list(lab_data_c, lab_data_b)
+
+major_s <- lapply(data_school, analyze_major)
+names(major_s) <- c("CC/SEAS/GS","BC")
+
+#Plot
+for(i in 1:2) {major_s[[i]][[1]]$school <- names(major_s)[i]}
+major_DF_2 <- do.call(rbind, lapply(major_s, function(l) l[[1]]))
+
+major_DF_2$majorCat <- factor(major_DF_2$majorCat, 
+              levels = levels(major_DF_2$majorCat)[order(with(major_DF_2, 
+              tapply(total, majorCat, FUN = sum)), decreasing = T)])
+
+m_plot <- ggplot(major_DF_2, 
+                 aes(x = majorCat, y = total, fill = school)) +
+          geom_bar(stat = "identity", width = .75, position="dodge") + 
+          xlab("Major") + 
+          ylab("Number of Students") + 
+          ggtitle("Visits by Major Category (Aggregate)") +
+          theme(plot.title = element_text(hjust = 0.5)) +
+          #scale_fill_manual(values=pal2(2), name = "School")
+          scale_fill_manual(values=pal(2), name = "School")
+m_plot
+```
+
+## Program
+```{r}
+#Program
+program_s <- analyze_program(lab_data_c)
+program_s <- lapply(data_school, analyze_program)
+names(program_s) <- c("CC/SEAS/GS","BC")
+
+#Plot
+for(i in 1:2) {program_s[[i]][[1]]$school <- names(program_s)[i]}
+program_DF_2 <- do.call(rbind, lapply(program_s, function(l) l[[1]]))
+
+program_DF_2$program <- factor(program_DF_2$program, 
+              levels = levels(program_DF_2$program)[order(with(program_DF_2, 
+              tapply(total, program, FUN = sum)), decreasing = T)])
+
+p_plot <- ggplot(program_DF_2, 
+                 aes(x = program, y = total, fill = school)) +
+          geom_bar(stat = "identity", width = .75, position="dodge") + 
+          xlab("Program") + 
+          ylab("Number of Students") + 
+          ggtitle("Visits by Program (Aggregate)") +
+          theme(plot.title = element_text(hjust = 0.5)) +
+          #scale_fill_manual(values=pal2(2), name = "School")
+          scale_fill_manual(values=pal(2), name = "School")
+p_plot
+
+# program_s[[1]][[1]]
+# program_s[[2]][[1]]
+```
+
+
+## Class Year
+```{r}
+#Class year
+cyear_s <- lapply(data_school, analyze_cyear)
+names(cyear_s) <- c("CC/SEAS/GS","BC")
+
+#Plot for aggregate dataset filled by semester
+lab_data$year <- factor(lab_data$year, 
+                        levels = c("First Year", "Second Year", "Third Year", "Fourth Year", "Other"),
+                        ordered = T)
+cyear_plot <- ggplot(lab_data[!is.na(lab_data$year) & 
+                                lab_data$year != "Other" &
+                                lab_data$school != "Other",], 
+              aes(year, fill = school)) + 
+              geom_bar(width = .75, position="dodge") + 
+              labs(title = "Visits by Class Year", 
+                   x = "Class Year", 
+                   y = "Number of Students") +
+              theme(plot.title = element_text(hjust = 0.5)) + 
+              #scale_fill_manual(values=pal2(2), name = "School")
+              scale_fill_manual(values=pal(2), name = "School")
+cyear_plot
+
+# cyear_s[[1]][[1]]
+# cyear_s[[2]][[1]]
+
+```
+
+\newpage
+## Courses
+```{r, results='asis'}
+d <- lapply(data_school, get_courses)
+# lapply(d, function(x) xtable(data.frame(x)))
+for (i in 1:2){
+  t <- xtable(data.frame(d[[i]]), 
+              caption = paste('Number of Visitors by Course,',names(cyear_s)[i]))
+  names(t) <- ''
+  print(t,sanitize.colnames.function = large, booktabs = T)
+}
+```
+
+\newpage
+# Tracking Repeat Visitors
+## Method
+We are interested in determining whether the same students keep returning to the ERC. Our sign-in sheets include fields for name and UNI; but, because ERC fellows input the information into the Qualtrics survey based on handwritten surveys filled out by the visitors, there are many typos. In this analysis, we consider visitors to be a match if either the name OR the UNI matches. A more full-proof approach would be for a person to manually fix the name and UNI typos by cross-checking the information with the Columbia University directory.
+
+A student ID is assigned to each unique student as determined by the above approach. Tables 20 and 21 display the number of students who have visited the ERC once, twice, three times and so on for both the aggregate data set and for each semester. We also determine the number of unique visitors to the ERC based on the student ID. 
+
+```{r, results = 'asis'}
+#---------------------------------------------------------------------------------------------
+#Track number of visits per student
+#Assign an id to each unique student (to best of our ability using messy data)
+#---------------------------------------------------------------------------------------------
+
+#Mode returns the non-NA mode of a vector if applicable
+Mode <- function(x) {
+  ux <- unique(x)
+  ifelse (all(is.na(x)), return(ux) , return(ux[which.max(na.omit(tabulate(match(x, ux))))]))
+}
+
+track <- function (lab_data){
+  #clean name/uni data
+  lab_data$name[(lab_data$name == "")] <- NA
+  lab_data$name <- toupper(lab_data$name)
+  lab_data$uni[(lab_data$uni == "")] <- NA
+  lab_data$uni <- sapply(lab_data$uni, as.character)
+  
+  #Use a regular expression to make sure uni is in proper format
+  pos <- regexpr('[A-z]{2,3}[0-9]{4}', lab_data$uni)
+  lab_data[which(pos!=1),"uni"] <- NA
+  pos[which(pos!=1)] <- NA
+  lab_data[which(pos==1),]$uni <- regmatches(lab_data$uni, pos)
+  
+  #Track number of visits per student based on name/uni
+  #Some observations are dropped in the visits data frame because no name or uni exists
+  #First group by uni and omit those with no uni
+  visits_byuni <- group_by(lab_data[!is.na(lab_data$uni),-c(5,6)], uni) %>%
+    summarise(n_visits=n(), name=Mode(name))
+  
+  #Add back the observations with a name but no uni
+  visits_byuni <- rbind(visits_byuni, cbind(lab_data[with(lab_data, is.na(uni) & !is.na(name)), c("uni", "name")], n_visits = 1))
+  
+  #Further group by name if not NA
+  visits <- group_by(visits_byuni[!is.na(visits_byuni$name),], name) %>%
+    summarise(n_visits = sum(n_visits), uni=Mode(uni))
+  
+  #Add back the observations with a uni but no name
+  visits <- rbind(visits, visits_byuni[is.na(visits_byuni$name),])
+  rm(visits_byuni) #Remove intermediate data frame
+  
+  #Add student id to visits data frame (and make sure there are no duplicates)
+  repeat{
+    id <- stri_rand_strings(nrow(visits), 12)
+    visits$sid <- id
+    if (length(unique(id)) == nrow(visits)){
+      break
+    }
+  }
+  
+  #Add number of visits and sid to the original data frame by joining lab_data and visits
+  #First join by uni and then by name
+  #Join by uni where it exists and then add back na observations
+  lab_data2 <- left_join(lab_data[!is.na(lab_data$uni),], visits[, c("uni","n_visits","sid")], by = "uni")
+  lab_data2 <- rbind(lab_data2, cbind(lab_data[is.na(lab_data$uni),], n_visits = NA, sid = NA))
+  
+  #Now join by name where it exists
+  lab_data3 <- left_join(lab_data2[!is.na(lab_data2$name),], visits[, c("name","n_visits","sid")], by = "name")
+  
+  
+  #There are a few rare cases where the number of visits (and sids) do not match based on the 2 different joins
+  #In these cases, add n_visits together and choose the sid associated with the larger one
+  #Then update n_visits for the other associated sids
+  
+  lab_data3$n_visits <- with(lab_data3, pmin(n_visits.x, n_visits.y, na.rm = TRUE))
+  lab_data3$sid <- with(lab_data3, pmin(sid.x, sid.y, na.rm = TRUE))
+  fix_i <- with(lab_data3, which(n_visits.x != n_visits.y))
+  lab_data3[fix_i,]$n_visits <- lab_data3[fix_i,]$n_visits.x + lab_data3[fix_i,]$n_visits.y
+  
+  for(i in 1:length(fix_i)){
+    j <- fix_i[i]
+    if (lab_data3[j,]$n_visits.x >= lab_data3[j,]$n_visits.y) {
+      lab_data3[j,]$sid <- lab_data3[j,]$sid.x
+    } else {
+      lab_data3[j,]$sid <- lab_data3[j,]$sid.y
+    }
+    lab_data3[which(lab_data3$sid == lab_data3[j,]$sid),]$n_visits <- lab_data3[j,]$n_visits
+  }
+  
+  drops <- c("n_visits.x","n_visits.y","sid.x","sid.y")
+  lab_data3 <- lab_data3[, !(names(lab_data3) %in% drops)]
+  
+  lab_data <- rbind(lab_data3, lab_data2[is.na(lab_data2$name),])
+  
+  #Remove intermediary data frames
+  #rm(lab_data2, lab_data3)
+  
+  #Tabulate Number of Visits to get counts of students in each category
+  table(visits$n_visits, dnn = c("Number of Total Visits"))
+  
+  #Compare table counts to make sure they are close; might be a few discrepencies which could be cleaned up
+  #table(visits$n_visits)*c(1:max(lab_data$n_visits, na.rm = T))
+  table(lab_data$n_visits)
+  
+  #Add feature manyVisits
+  #0 if student has only visited once, 1 if student has visited more than once
+  lab_data$manyVisits <- ifelse(lab_data$n_visits == 1, 0, 1)
+  
+  
+  #Number of unique visitors to the ERC (might be a few off)
+  length(unique(lab_data$sid))
+  
+  return(list(lab_data,visits))
+}
+
+#Total
+track_all <- track(lab_data)
+lab_data <- track_all[[1]]
+
+#Breakdown by Semester
+track_sem <- lapply(data, track)
+data <- lapply(track_sem, function(l) l[[1]])
+names(track_sem) <- semesters
+
+#Tabulate Number of Visits to get counts of students in each category
+t <- xtable(data.frame(table(track_all[[2]]$n_visits)),
+            caption = 'Frequency of Number of Visits per Student', align="ccc")
+names(t) <- c('No. Visits','Frequency')
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+
+#By Semester
+x <- lapply(track_sem, function(l) data.frame(table(l[[2]]$n_visits)))
+x <- x %>% Reduce(function(dtf1,dtf2) full_join(dtf1,dtf2,by="Var1"), .)
+x[is.na(x)] <- 0
+names(x)[1] <- c('No. Visits')
+names(x)[-1] <- semesters
+
+t <- xtable(x, caption = 'Frequency of Number of Visits per Student by Semester', align=paste(c('cc', rep('c', n)), collapse = ''), digits = c(rep(0,n+2)))
+print(t, include.rownames=FALSE, sanitize.colnames.function = large, booktabs = T)
+```
+
+Finally, we create a new dummy variable called manyVisits, which takes the value 1 if the student in the given observation has visited the ERC multiple times (i.e. at least twice) and 0 otherwise. In the next section, we determine the variables that have a significant association with manyVisits in order to gain insight into why a student may or may not return to the ERC.
+
+## Results
+
+
+```{r, results='asis'}
+#Number of unique visitors to the ERC (might be a few off)
+cat('The number of unique visitors in...  \n') 
+cat('-The aggregate data set was',length(unique(lab_data$sid)),'  \n')
+#Unique Visitors per semester
+for(i in 1:n){
+  cat('-',semesters[i],'was',length(unique(data[[i]]$sid)),'  \n')
+}
+```
+
+
+```{r}
+# lapply(data, function(l) length(unique(l$sid)))
+# lapply(data, function(l) length(l$sid))
+```
+
+
+\newpage
+# Variables Associated with Return Visitors
+
+In order to determine the variables that are associated with repeat visitors, we first create contingency tables that display the frequencies of observations that fall into each combination of categories. We also present the row percentages -- that is, the percent of visitors who are one time visitors and the percent who are repeat visitors in a given category of a variable. 
+
+Next, we perform a chi-squared test on each of the variables of interest and manyVisits to determine if there is a statistically significant association.
+
+To assess the signifcance of individual categories, we look at the standardized residuals of the chi-squared test. Each standardized residual is a $z$-score, so if the value lies outside of $\pm1.96$, it is significant at $p<.05$. 
+
+Finally, for 2x2 contingency tables, we use the odds ratio to calculate effect size, reporting both the odds ratio estimate and the 95% confidence interval.
+
+Note that the following analysis is based on the entire data set (i.e. all visits), not just unique visitors.
+
+\newpage
+## Major Category
+**All Major Categories**
+```{r, results='asis'}
+# -------------------------------------------------------------------------
+# Contingency tables
+# -------------------------------------------------------------------------
+
+library(descr)
+
+#major category and mulitiple visits (boolean)
+major_visits <- with(lab_data, table(majorCat, manyVisits, exclude = c("Other", NA)))
+# xtable(prop.table(major_visits, 1))
+#Finding: 
+# chisq.test(major_visits) #
+#mosaicplot(major_visits, shade = T, color=T)
+
+ct <- CrossTable(major_visits, chisq = T, prop.chisq = F, sresid = T, fisher = T,
+                 prop.c = F, prop.t = F)
+pander(ct)
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption='Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = `r ct$CST$p.value`
+
+
+\newpage
+
+**STEM vs Humanities**
+
+We run the same analysis as above, limiting the major categories to the humanities and STEM.
+
+```{r, results = 'asis'}
+stem_hum <- with(lab_data, table(majorCat, manyVisits, exclude = c("Other", "Social Sciences", NA)))
+ct <- CrossTable(stem_hum[c(2,1),], chisq = T, prop.chisq = F, sresid = T, fisher = T,
+                 prop.c = F, prop.t = F, format = 'SPSS', missing.include = FALSE)
+pander(ct)
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption = 'Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = `r ct$CST$p.value`
+
+Fisher's Exact Test for Count Data (two-sided):
+
+> p-value = `r ct$fisher.ts$p.value`
+
+> 95% Confidence Interval: `r ct$fisher.ts$conf.int[1:2]`
+
+> Odds ratio estimate: `r ct$fisher.ts$estimate`
+
+\newpage
+## Program
+```{r, results='asis'}
+program_visits <- with(lab_data, table(program1, manyVisits, exclude = c("LATEX", "PYTHON",
+                                                                         "OTHER",NA)))
+#program_visits
+#prop.table(program_visits, 1)
+#chisq.test(program_visits)
+ct <- CrossTable(program_visits, chisq = T, sresid = T, fisher = F,
+                 prop.c = F, prop.t = F, missing.include = FALSE)
+pander(ct)
+
+#colnames(program_visits) <- c("No", "Yes")
+# mosaicplot(program_visits, shade = T, color=T, main = "Repeat Visitors by Program",
+#            xlab = "Program", ylab = "Repeat Visitor?")
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption = 'Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = $`r ct$CST$p.value`$
+
+\newpage
+
+## School
+```{r, results = 'asis'}
+#Excluding "Other" category
+school_visits2 <- with(lab_data, table(school, manyVisits, exclude=c("Other",NA)))
+ct <- CrossTable(school_visits2[c(2,1),], prop.chisq = F, chisq = T, 
+                 sresid = T, fisher = T, prop.c = F, prop.t = F, missing.include = FALSE)
+pander(ct)
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption = 'Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = $`r ct$CST$p.value`$
+
+Fisher's Exact Test for Count Data (two-sided):
+
+> p-value = $`r ct$fisher.ts$p.value`$
+
+> 95% Confidence Interval: $`r ct$fisher.ts$conf.int[1:2]`$
+
+> Odds ratio estimate: $`r ct$fisher.ts$estimate`$
+
+\newpage
+## Workshop
+```{r, results = 'asis'}
+wkshop_visits <- (with(lab_data, table(workshop, manyVisits)))
+ct <- CrossTable(wkshop_visits, prop.chisq = F, chisq = T, 
+                 sresid = T, fisher = T, prop.c = F, prop.t = F, missing.include = FALSE)
+pander(ct)
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption = 'Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = $`r ct$CST$p.value`$
+
+Fisher's Exact Test for Count Data (two-sided):
+
+> p-value = $`r ct$fisher.ts$p.value`$
+
+> 95% Confidence Interval: $`r ct$fisher.ts$conf.int[1:2]`$
+
+> Odds ratio estimate: $`r ct$fisher.ts$estimate`$
+
+\newpage
+## Class Year
+```{r}
+year_visits <- with(lab_data, table(year, manyVisits, exclude = c("Other",NA)))
+ct <- CrossTable(year_visits, prop.chisq = F, chisq = T, 
+                 sresid = T, fisher = F, prop.c = F, prop.t = F, missing.include = FALSE)
+pander(ct)
+```
+
+```{r, results = 'asis'}
+xtable(ct$CST$residuals, caption = 'Standard Residuals')
+```
+
+Pearson's Chi-squared Test:
+
+> X-squared = `r ct$CST$statistic`, df = `r ct$CST$parameter`, p-value = $`r ct$CST$p.value`$
